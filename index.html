@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <title>Driving behaviour Map.js</title>
+  <meta charset="utf-8">
+  <link type="text/css" href="http://ajax.googleapis.com/ajax/libs/jqueryui/1.11.2/themes/redmond/jquery-ui.css" rel="stylesheet" />
+  <script src="http://d3js.org/d3.v3.min.js" charset="utf-8"></script>
+  <script src="js/three.min.js"></script>
+  <script src="js/OrbitControls.js"></script>
+  <script src="js/Tween.js"></script>
+  <script src="js/jquery-2.1.3.min.js"></script>
+  <script type="text/javascript" src="js/jquery-ui.min.js"></script>
+  <script type="text/javascript" src="js/jquery.youtubepopup.min.js"></script>
+  <link rel="stylesheet" href="css/magnific-popup.css">
+  <script src="js/jquery.magnific-popup.js"></script>
+
+
+  <style>
+    body {
+      background:#000;
+      color:#fff;
+      padding:0;
+      margin:0;
+      overflow:hidden;
+      font-family:Century Gothic;
+      text-align:center;
+    }
+    a { color:skyblue; text-decoration:none }
+
+    #avatar {
+      width: 200px;
+      height: 80px;
+      margin-left: 40px;
+      margin-top: 10px;
+      float:left;
+      position: absolute;
+    }
+
+    #avatarimg {
+      float:left;
+    }
+
+    #avatartxt{
+      margin-left: 10px;
+      margin-top: 25px;
+      float:left;
+    }
+
+    #info {
+      margin-top: 28px;
+      left: 55%;
+      width: 600px;
+      position: absolute;
+      margin-left: -300px;
+    }
+
+    #infodiv {
+      float:left;
+      width: 150px;
+    }
+
+    #infoimg {
+      float: left;
+      margin-left: 43px;
+    }
+
+    #infotxt {
+      font-size:90%;
+      float: left;
+      margin-top: 8px;
+      margin-left: 5px;
+    }
+
+    #Divlocked {
+      float: left;
+      margin-left: 43px;
+      margin-top: 28px;
+      position: absolute;
+      display:none;
+    }
+
+    #Unlock {
+      margin: 10px;
+      float: left;
+    }
+
+    .page {
+      margin: 10px;
+      float: left;
+    }
+
+    .popup {
+      position:absolute;
+      z-index:2;
+      top:0;
+      left:0;
+      width:100%;
+      height:100%;
+      background:rgba(0,0,0,0.7);
+      opacity:0;
+      visibility:hidden;
+      transition:.3s ease;
+    }
+
+    .show-popup .popup {
+      opacity:1;
+      visibility: visible;
+    }
+
+    .popup > iframe {
+      position:absolute;
+      top:20%;
+      margin-left:-25%;
+    }
+
+  </style>
+
+</head>
+<body style="margin: 0;">
+
+  <div id="avatar">
+    <div id="avatarimg">
+      <img src="images/avatar.png" height="64px" width="64px" />
+    </div>
+    <div id="avatartxt">
+      <a href="http://chaoswang.tumblr.com" target="_blank">X.G</a>
+    </div>
+  </div>
+
+  <div id="info">
+    <div id= "infodiv" >
+      <div id="infoimg">
+        <img src="images/Sumlike.png" height="32px" width="32px" />
+      </div>
+      <div id="infotxt">
+        <a id="LikesNum"></a>
+        <a>like</a>
+      </div>
+    </div>
+    <div id= "infodiv" >
+      <div id="infoimg">
+        <img src="images/Sumdislike.png" height="32px" width="32px" />
+      </div>
+      <div id="infotxt">
+        <a id="DislikeNum"></a>
+        <a>dislike</a>
+      </div>
+    </div>
+    <div id= "infodiv" >
+      <div id="infoimg">
+        <img src="images/acceleration.png" height="32px" width="32px" />
+      </div>
+      <div id="infotxt">
+        <a>speeding</a>
+      </div>
+    </div>
+    <div id= "infodiv" >
+      <div id="infoimg">
+        <img src="images/brake.png" height="32px" width="32px" />
+      </div>
+      <div id="infotxt">
+        <a>brake</a>
+      </div>
+    </div>
+  </div>
+
+  <div id="Divlocked">
+    <div id="Unlock">
+      <img src="images/Unlocked.png" height="64px" width="64px" />
+    </div>
+    <div class="page" href ="#media-popup" data-media= "//www.youtube.com/embed/YoXa2Pl7Hk0" >
+      <img src="images/Playvideo.png"  height="64px" width="64px" />
+    </div>
+  </div>
+
+  <div class="popup" id="media-popup">
+    <iframe width="800" height="480" src="" frameborder="0" allowfullscreen></iframe>
+    <!--<iframe width="560" height="315" src="" frameborder="0" allowfullscreen></iframe>-->
+
+  </div>
+
+  <script>
+
+
+    var el = document.querySelector('.page');
+    console.log(el.dataset.media);
+    // Set up the scene, camera, and renderer as global variables.
+    var scene, camera, renderer;
+    var targetList = [];
+    var projector, mouse = { x: 0, y: 0 };
+    var controls;
+    var positionCamera;
+    var targetlookatCamera;
+    var ObjectPosition = new THREE.Vector3;
+    var Dislikenumbers;
+    var Likenumbers;
+
+    init();
+    animate();
+
+
+    // Sets up the scene.
+    function init() {
+
+      // Create the scene and set the scene size.
+      scene = new THREE.Scene();
+      var WIDTH = window.innerWidth,
+          HEIGHT = window.innerHeight;
+
+      // Create a renderer and add it to the DOM.
+      renderer = new THREE.WebGLRenderer({antialias:true});
+      renderer.setSize(WIDTH, HEIGHT);
+      document.body.appendChild(renderer.domElement);
+
+      // Create a camera, zoom it out from the model a bit, and add it to the scene.
+
+      var distance = new THREE.Vector3;
+      distance.set(3.5,0,-3.5);
+
+      targetlookatCamera = { x:1.7, y:0, z:-3 };
+
+      camera = new THREE.PerspectiveCamera(35, WIDTH / HEIGHT, 0.01, 2000);
+
+      camera.position.set(6.4, 4, 7);
+
+      scene.add(camera);
+
+      /////////////////////////////////////////
+      /////////Add OrbitControls.//////////////
+      /////////////////////////////////////////
+
+      controls = new THREE.OrbitControls(camera);
+      controls.object.position.add( distance );
+      controls.target.add( distance );
+      controls.userPanSpeed = 0.1;
+      controls.userZoom = true;
+      controls.userZoomSpeed = 5.0;
+
+      controls.minPolarAngle = 0.3 * Math.PI; // radians
+      controls.maxPolarAngle = 0.3 * Math.PI; // radians
+      controls.minDistance = 0.005;
+      controls.maxDistance = 10;
+      controls.noPan = true;
+
+      // Create an event listener that resizes the renderer with the browser window.
+      window.addEventListener('resize', function() {
+        var WIDTH = window.innerWidth,
+            HEIGHT = window.innerHeight;
+        renderer.setSize(WIDTH, HEIGHT);
+        camera.aspect = WIDTH / HEIGHT;
+        camera.updateProjectionMatrix();
+      });
+
+
+
+      // Set the background color of the scene.
+      renderer.setClearColor("rgb(20,38,60)", 1);
+
+      // Create a light, set its position, and add it to the scene.
+      var light = new THREE.PointLight(0xffffff);
+      light.position.set(-100,200,100);
+      scene.add(light);
+
+      /////////////////////////////////////////
+      /////////Add Pathline////////////////////
+      /////////////////////////////////////////
+
+      var data = d3.csv("data/Driving.csv", function (data) {
+          // console.log(data);
+          CreatePath(data);
+          CreateCylinder(data);
+          CreateStartSign(data[0]);
+          CreateEndSign(data[data.length-1]);
+
+          CreateSpeedingline(data);
+      });
+
+
+      var dataLikeDislike = d3.csv("data/L_D.csv", function (dataLikeDislike) {
+          // console.log(data);
+
+          CreateDislike(dataLikeDislike);
+          var Dislikenumbers = dataLikeDislike.length;
+
+          // document.getElementById("DislikeNum").innerHTML= Dislikenumbers + "";
+          console.log(dataLikeDislike);
+          MatchLikeDislikeToVideo(dataLikeDislike);
+      });
+
+      function MatchLikeDislikeToVideo(dataLikeDislike){
+          dataLikeDislike.forEach(function(d) {
+              var srcLorD = d.SRC ;
+              var srcZ = parseFloat(d.PositionZ);
+              if (targetlookatCamera.z * 1000 === -srcZ ) {
+                el.dataset.media = srcLorD;
+                console.log(srcLorD);
+              }
+          });
+      }
+
+      function CreatePath(data){
+        var geometry = new THREE.Geometry();
+        data.forEach(function(d){
+
+            var x = parseFloat(d.PositionX);
+            var y = parseFloat(d.PositionY);
+            var z = parseFloat(d.PositionZ);
+
+            geometry.vertices.push(
+                    new THREE.Vector3(x, y/1000, -z )
+            )
+        });
+
+        geometry.computeLineDistances();
+        var material = new THREE.LineDashedMaterial({
+          color: "rgb(35,275,238)",
+          linewidth: 3,
+          dashSize: 0.003,
+          gapSize: 0.001,
+          opacity: 0.8,
+          transparent: true
+        });
+        var line = new THREE.Line( geometry, material );
+        scene.add( line );
+      }
+
+
+
+      //create Brake
+
+      function CreateCylinder(data){
+
+        data.forEach(function(d){
+
+          var x = parseFloat(d.PositionX);
+          var z = parseFloat(d.PositionZ);
+          var BrakeValue = parseFloat(d.Brake);
+
+          if (BrakeValue > 0) {
+            var lineGeometry = new THREE.Geometry();
+            lineGeometry.vertices.push( new THREE.Vector3( x, 0, -z), new THREE.Vector3(x, -BrakeValue/3, -z) );
+            lineGeometry.computeLineDistances();
+            var lineMaterial = new THREE.LineDashedMaterial( {
+              color: "rgb(255,60,0)",
+              dashSize: 1,
+              gapSize: 0,
+              linewidth: 0.3,
+              opacity: 1,
+              transparent: true
+            } );
+            var line = new THREE.Line( lineGeometry, lineMaterial );
+            scene.add(line);
+          }
+        });
+      }
+
+
+      //create speeding
+
+      function CreateSpeedingline(data){
+
+        data.forEach(function(d){
+
+          var x = parseFloat(d.PositionX);
+          var z = parseFloat(d.PositionZ);
+          var SpeedingOrNot = parseFloat(d.DrivingFasterThenRoadSpeed);
+          var SpeedingValue = parseFloat(d.VelocityZ);
+//
+
+          if (SpeedingValue * 3.6 > 125 ) {
+
+            var lineGeometry = new THREE.Geometry();
+            lineGeometry.vertices.push( new THREE.Vector3( x, 0, -z), new THREE.Vector3(x,(SpeedingValue * 3.6 - 125)/100, -z) );
+            lineGeometry.computeLineDistances();
+            var lineMaterial = new THREE.LineDashedMaterial( {
+              color: "rgb(35,275,238)",
+              dashSize: 1,
+              gapSize: 0,
+              linewidth: 0.3,
+              opacity: 1,
+              transparent: true
+            } );
+            var line = new THREE.Line( lineGeometry, lineMaterial );
+            scene.add(line);
+          }
+        });
+      }
+
+
+      /////////////////////////////////////////
+      /////////Create Dislike array////////////
+      /////////////////////////////////////////
+      function CreateDislike(dataLikeDislike){
+
+        dataLikeDislike.forEach(function(d){
+
+          var x = parseFloat(d.PositionX);
+          var z = parseFloat(d.PositionZ);
+          var LorD = parseFloat(d.LorD);
+
+          if (LorD === 1) {
+            // Like //
+            Likenumbers =+ 1;
+            var crateTexture = THREE.ImageUtils.loadTexture('images/like.png');
+
+            var crateMaterial = new THREE.SpriteMaterial({
+              map: crateTexture, useScreenCoordinates: false
+            });
+            var Dislike = new THREE.Sprite(crateMaterial);
+            Dislike.position.set(x / 1000, 0.5, -z / 1000);
+            Dislike.scale.set(0.2, 0.2, 1.0); // imageWidth, imageHeight
+            scene.add(Dislike);
+
+            targetList.push(Dislike);
+
+            // line //
+            var lineGeometry = new THREE.Geometry();
+            lineGeometry.vertices.push(new THREE.Vector3(x / 1000, 0, -z / 1000), new THREE.Vector3(x / 1000, 0.5, -z / 1000));
+            lineGeometry.computeLineDistances();
+            var lineMaterial = new THREE.LineDashedMaterial({
+              color: "rgb(0,174,239)",
+              dashSize: 0.01,
+              gapSize: 0.01,
+              linewidth: 2,
+              opacity: 0.8,
+              transparent: true
+            });
+            var line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+          }
+
+          if (LorD === 2) {
+            // Dislike //
+            Dislikenumbers =+ 1;
+
+            var crateTexture = THREE.ImageUtils.loadTexture('images/dislike.png');
+
+            var crateMaterial = new THREE.SpriteMaterial({
+              map: crateTexture, useScreenCoordinates: false
+            });
+            var Dislike = new THREE.Sprite(crateMaterial);
+            Dislike.position.set(x / 1000, 0.5, -z / 1000);
+            Dislike.scale.set(0.2, 0.2, 1.0); // imageWidth, imageHeight
+            scene.add(Dislike);
+
+            targetList.push(Dislike);
+
+            // line //
+            var lineGeometry = new THREE.Geometry();
+            lineGeometry.vertices.push(new THREE.Vector3(x / 1000, 0, -z / 1000), new THREE.Vector3(x / 1000, 0.5, -z / 1000));
+            lineGeometry.computeLineDistances();
+            var lineMaterial = new THREE.LineDashedMaterial({
+              color: "rgb(242,109,125)",
+              dashSize: 0.01,
+              gapSize: 0.01,
+              linewidth: 2,
+              opacity: 0.8,
+              transparent: true
+            });
+            var line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+          }
+
+          if (LorD === 3) {
+            // Dislike //
+            var crateTexture = THREE.ImageUtils.loadTexture('images/SendingLike.png');
+
+            var crateMaterial = new THREE.SpriteMaterial({
+              map: crateTexture, useScreenCoordinates: false
+            });
+            var Dislike = new THREE.Sprite(crateMaterial);
+            Dislike.position.set(x / 1000, 0.3, -z / 1000);
+            Dislike.scale.set(0.2, 0.2, 1.0); // imageWidth, imageHeight
+            scene.add(Dislike);
+
+            targetList.push(Dislike);
+
+            // line //
+            var lineGeometry = new THREE.Geometry();
+            lineGeometry.vertices.push(new THREE.Vector3(x / 1000, 0, -z / 1000), new THREE.Vector3(x / 1000, 0.2, -z / 1000));
+            lineGeometry.computeLineDistances();
+            var lineMaterial = new THREE.LineDashedMaterial({
+              color: "rgb(255,255,255)",
+              dashSize: 0.01,
+              gapSize: 0.01,
+              linewidth: 2,
+              opacity: 0.4,
+              transparent: true
+            });
+            var line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+          }
+
+          if (LorD === 4) {
+            // Dislike //
+            var crateTexture = THREE.ImageUtils.loadTexture('images/SendingDislike.png');
+
+            var crateMaterial = new THREE.SpriteMaterial({
+              map: crateTexture, useScreenCoordinates: false
+            });
+            var Dislike = new THREE.Sprite(crateMaterial);
+            Dislike.position.set(x / 1000, 0.3, -z / 1000);
+            Dislike.scale.set(0.2, 0.2, 1.0); // imageWidth, imageHeight
+            scene.add(Dislike);
+
+            targetList.push(Dislike);
+
+            // line //
+            var lineGeometry = new THREE.Geometry();
+            lineGeometry.vertices.push(new THREE.Vector3(x / 1000, 0, -z / 1000), new THREE.Vector3(x / 1000, 0.2, -z / 1000));
+            lineGeometry.computeLineDistances();
+            var lineMaterial = new THREE.LineDashedMaterial({
+              color: "rgb(255,255,255)",
+              dashSize: 0.01,
+              gapSize: 0.01,
+              linewidth: 2,
+              opacity: 0.4,
+              transparent: true
+            });
+            var line = new THREE.Line(lineGeometry, lineMaterial);
+            scene.add(line);
+          }
+        });
+      }
+
+      //Create Start and End //
+      function CreateStartSign(d){
+        var x = parseFloat(d.PositionX);
+        var z = parseFloat(d.PositionZ);
+
+        var crateTexture = THREE.ImageUtils.loadTexture('images/start.png');
+
+        var crateMaterial = new THREE.SpriteMaterial( {
+          map: crateTexture, useScreenCoordinates: false
+        } );
+        var StartSign = new THREE.Sprite( crateMaterial );
+        StartSign.position.set( x,0.9,-z );
+        StartSign.scale.set( 0.2, 0.13, 1.0 ); // imageWidth, imageHeight
+        scene.add( StartSign );
+
+        targetList.push(StartSign);
+
+
+        var lineGeometry = new THREE.Geometry();
+        lineGeometry.vertices.push( new THREE.Vector3( x, 0, -z), new THREE.Vector3(x, 0.85, -z) );
+        lineGeometry.computeLineDistances();
+        var lineMaterial = new THREE.LineDashedMaterial( {
+          color: "rgb(35,275,238)",
+          dashSize: 0.01,
+          gapSize: 0.01,
+          linewidth: 2,
+          opacity: 0.8,
+          transparent: true
+        } );
+        var line = new THREE.Line( lineGeometry, lineMaterial );
+        scene.add(line);
+      }
+
+      function CreateEndSign(d){
+        var x = parseFloat(d.PositionX);
+        var z = parseFloat(d.PositionZ);
+
+        var crateTexture = THREE.ImageUtils.loadTexture('images/end.png');
+
+        var crateMaterial = new THREE.SpriteMaterial( {
+          map: crateTexture, useScreenCoordinates: false
+        } );
+        var StartSign = new THREE.Sprite( crateMaterial );
+        StartSign.position.set( x,0.9,-z );
+        StartSign.scale.set( 0.2, 0.13, 1.0 ); // imageWidth, imageHeight
+        scene.add( StartSign );
+
+        targetList.push(StartSign);
+
+        var lineGeometry = new THREE.Geometry();
+        lineGeometry.vertices.push( new THREE.Vector3( x, 0, -z), new THREE.Vector3(x, 0.85, -z) );
+        lineGeometry.computeLineDistances();
+        var lineMaterial = new THREE.LineDashedMaterial( {
+          color: "rgb(35,275,238)",
+          dashSize: 0.01,
+          gapSize: 0.01,
+          linewidth: 2,
+          opacity: 0.8,
+          transparent: true
+        } );
+        var line = new THREE.Line( lineGeometry, lineMaterial );
+        scene.add(line);
+      }
+
+
+      //dislike each
+      var crateTexture = THREE.ImageUtils.loadTexture( 'images/dislike.png' );
+
+      var crateMaterial = new THREE.SpriteMaterial({
+        map: crateTexture, useScreenCoordinates: false
+      });
+      var Dislike = new THREE.Sprite( crateMaterial );
+      Dislike.position.set( 1.7,0.5,-3 );
+      Dislike.scale.set( 0.2, 0.2, 1.0 ); // imageWidth, imageHeight
+      scene.add( Dislike );
+
+      targetList.push(Dislike);
+
+     function CreateLines(){
+       var lineGeometry = new THREE.Geometry();
+       lineGeometry.vertices.push( new THREE.Vector3( 1.7, 0, -3), new THREE.Vector3(1.7, 0.5, -3) );
+       lineGeometry.computeLineDistances();
+       var lineMaterial = new THREE.LineDashedMaterial( {
+         color: "rgb(255,60,0)",
+         dashSize: 0.01,
+         gapSize: 0.01,
+         linewidth: 2,
+         opacity: 0.8,
+         transparent: true
+       } );
+       var line = new THREE.Line( lineGeometry, lineMaterial );
+       scene.add(line);
+     }
+     CreateLines();
+
+
+      /////////////////////////////////////////
+      /////////Create Footprint////////////////
+      /////////////////////////////////////////
+
+      var crateTexture2 = THREE.ImageUtils.loadTexture( 'images/footprint.png' );
+
+      var crateMaterial2 = new THREE.SpriteMaterial( {
+        map: crateTexture2, useScreenCoordinates: false
+      } );
+      var Footprint = new THREE.Sprite( crateMaterial2 );
+      Footprint.position.set( 5.52,0.5,-4.48 );
+      Footprint.scale.set( 0.2, 0.2, 1.0 ); // imageWidth, imageHeight
+      scene.add( Footprint );
+
+      targetList.push(Footprint);
+
+
+      function CreateLines2(){
+
+        var lineGeometry = new THREE.Geometry();
+        lineGeometry.vertices.push( new THREE.Vector3( 5.52, 0, -4.48), new THREE.Vector3(5.52, 0.5, -4.48) );
+        lineGeometry.computeLineDistances();
+        var lineMaterial = new THREE.LineDashedMaterial( {
+          color: "rgb(255,60,0)",
+          dashSize: 0.01,
+          gapSize: 0.01,
+          linewidth: 2,
+          opacity: 0.8,
+          transparent: true
+        } );
+        var line = new THREE.Line( lineGeometry, lineMaterial );
+        scene.add(line);
+      }
+      CreateLines2();
+
+      //TweenToTarget();
+
+
+      // Load in the mesh and add it to the scene.
+      var loader = new THREE.JSONLoader();
+      loader.load( "models/road+building.json", function(geometry){
+        var material = new THREE.MeshLambertMaterial({color: "rgb(30,94,141)"});
+        mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+      });
+
+
+      // initialize object to perform world/screen calculations
+      projector = new THREE.Projector();
+
+      // when the mouse moves, call the given function
+      document.addEventListener( 'mousedown', onDocumentMouseDown, false );
+
+    }
+
+    function onDocumentMouseDown( event ){
+      // the following line would stop any other event handler from firing
+      // (such as the mouse's TrackballControls)
+      event.preventDefault();
+
+      console.log("Click.");
+
+      // update the mouse variable
+      mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+      mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+      // find intersections
+
+      // create a Ray with origin at the mouse position
+      //   and direction into the scene (camera direction)
+
+      var vector = new THREE.Vector3( mouse.x, mouse.y, 1 );
+      projector.unprojectVector( vector, camera );
+      var ray = new THREE.Raycaster( camera.position, vector.sub( camera.position ).normalize() );
+
+      // create an array containing all objects in the scene with which the ray intersects
+      var intersects = ray.intersectObjects( targetList );
+
+      // if there is one (or more) intersections
+      if ( intersects.length > 0 ) {
+        console.log("z = " + intersects[0].point.z);
+        // change the color of the closest face.
+        // intersects[ 0 ].object.material.color.setHex( Math.random() * 0xffffff );
+        targetlookatCamera.x = intersects[0].point.x;
+        targetlookatCamera.y = 0;
+        targetlookatCamera.z = intersects[0].point.z;
+        TweenToTarget(targetlookatCamera);
+        $("#avatar").slideUp("fast");
+        $("#info").slideUp("fast");
+        $("#Divlocked").slideDown("slow");
+
+        if(targetlookatCamera.x * 1000 === 1603.98 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212724';
+        }
+        if(targetlookatCamera.x * 1000 === 1604.01 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212726';
+        }
+        if(targetlookatCamera.x * 1000 === 1731.96 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212729';
+        }
+        if(targetlookatCamera.x * 1000 === 1854.12 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212731';
+        }
+        if(targetlookatCamera.x * 1000 === 1832.63 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212734';
+        }
+        if(targetlookatCamera.x * 1000 === 2111.18 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212816';
+        }
+        if(targetlookatCamera.x * 1000 === 2180.34 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212817';
+        }
+        
+        if(targetlookatCamera.x * 1000 === 2650.51 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212820';
+        }
+        
+        if(targetlookatCamera.x * 1000 === 2938.77 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212823';
+        } 
+        
+        if(targetlookatCamera.x * 1000 === 3840.5 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212825';
+        } 
+      
+        if(targetlookatCamera.x * 1000 === 4072.84 ) {
+          el.dataset.media = 'https://player.vimeo.com/video/139212875';
+        }
+      }
+    }
+
+    /////////////////////////////////////
+    /////////the tween code//////////////
+    /////////////////////////////////////
+
+    function TweenToTarget (Tar_pos){
+
+      var tween = new TWEEN.Tween( controls.target ).to(
+                Tar_pos, 1200
+      ).onUpdate(function(){
+              }).easing(TWEEN.Easing.Quadratic.InOut
+      ).start();
+    }
+
+
+    // Renders the scene and updates the render as needed.
+    function animate() {
+
+      // Read more about requestAnimationFrame at http://www.paulirish.com/2011/requestanimationframe-for-smart-animating/
+      requestAnimationFrame(animate);
+      
+      // Render the scene.
+      renderer.render(scene, camera);
+      controls.update();
+      TWEEN.update();
+    }
+
+    $("#Unlock").click(function(){
+      $("#Divlocked").slideUp("fast");
+      $("#info").slideDown("slow");
+      $("#avatar").slideDown("slow");
+      TweenToTarget({ x:3.5, y:0, z:-3.5 });
+    });
+
+
+    $("[data-media]").on("click", function(e) {
+      e.preventDefault();
+      var $this = $(this);
+      var videoUrl = $this.attr("data-media");
+      var popup = $this.attr("href");
+      var $popupIframe = $(popup).find("iframe");
+      $popupIframe.attr("src", videoUrl);
+      $this.closest("body").addClass("show-popup");
+    });
+
+    $(".popup").on("click", function(e) {
+      e.preventDefault();
+      e.stopPropagation();
+        $("body").removeClass("show-popup");
+    });
+
+    $(".popup > iframe").on("click", function(e) {
+      e.stopPropagation();
+    });
+
+  </script>
+
+</body>
+</html>
